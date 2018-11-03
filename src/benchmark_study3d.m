@@ -194,7 +194,7 @@ classdef benchmark_study3d < handle
                    results.cat.second_error{ind_rho,ind_lambda} = vertcat(results.cat.second_error...
                        {ind_rho,ind_lambda},horzcat(results.all(frame).second_error.cat.biaxial,frame));
                else 
-                   warning('unconservative_error_cat : Frame %i has not neccary data stored',frame);
+                   warning('unconservative_error_cat : Frame %i has not neccessary data stored',frame);
                end
             end
            save_study(obj,results);
@@ -228,7 +228,75 @@ classdef benchmark_study3d < handle
             results.all_data_stored = false;
             save_results(obj,results)
         end
+        
+        function error_list = error_list(obj,accepted_error)
+            results = get_study_results(obj);
+            if ~isfield(results,'cat')
+                unconservative_error_cat(obj)
+                results = get_study_results(obj);
+            end
+            error_list = [0,0];
+            for i = 1:size(results.cat.first_error,1)
+                for j = 1:size(results.cat.first_error,2)
+                    for k = 1:size(results.cat.first_error{i,j},1)
+                        max_error = max(abs(results.cat.first_error{i,j}(k,1:3)));
+                        if max_error >= accepted_error
+                            frame_tag = results.cat.first_error{i,j}(k,4);
+                            error_list = vertcat(error_list,[frame_tag,max_error]);
+                        end
+                    end
+                end
+            end
+            error_list(1,:)=[];
+            error_list = sortrows(error_list,1);
+        end
+        function run_benchmark_error_list(obj,accepted_error)
+            
+            frame_list = error_list(obj,accepted_error);
+            parfor e = 1 : size(frame_list,1)
+                frame = frame_list(e,1);
+            
+                benchmark = strength_interaction(frame_data(obj,frame));
+                benchmark.extra_fine_DispStepSize = true;
+                
+                results = get_results(obj,frame);
+                if obj.debug
+                    
+                    [results.surface1,results.surface2] =...
+                        benchmark.surface_1_and_2;
+                    results.surface5 = benchmark.surface_5(results.surface1);
+                    
+                else
+                    try
+                        [results.surface1,results.surface2] =...
+                            benchmark.surface_1_and_2;
+                    catch
+                        continue
+                    end
 
+                    try
+                        results.surface5 = benchmark.surface_5(results.surface1);
+                    catch
+                        continue
+                    end                     
+                end
+                
+                results.first_error  = unconservative_error(obj,results.surface1,...
+                    results.surface4);
+     
+                results.second_error = unconservative_error(obj,results.surface5,...
+                    results.surface3);
+
+                delete(results_file(obj,frame));
+                obj.save_results(results,frame);
+
+            end
+        end        
+        
+        
+        
+        
+    
         function figure(obj,frame_tag,varargin)
             results = get_study_results(obj);
             num_figures = numel(varargin);

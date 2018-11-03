@@ -1244,7 +1244,7 @@ classdef BenchmarkAnalysis3d_OpenSees < OpenSeesAnalysis
                     if obj.numStepsGravity < 10000
                         warning('Repeating the analysis with larger numStepsGravity');
                         obj.numStepsGravity = obj.numStepsGravity * 2;
-                        results = runAnalysis(obj,analysisType,X1,X2,X3,tryNumber); % @todo - update this
+                        results = runAnalysis(obj,analysisType,X1,X2,tryNumber); % @todo - update this
                         return
                     else
                         error('Analysis failed in gravity loading');
@@ -1260,18 +1260,26 @@ classdef BenchmarkAnalysis3d_OpenSees < OpenSeesAnalysis
                     % if obj.numStepsLateral < 10000                    
                     %     warning('Repeating the analysis with larger numStepsLateral');
                     %     obj.numStepsLateral = obj.numStepsLateral * 2;
-                    %     results = runAnalysis(obj,analysisType,X1,X2,X3,tryNumber);
+                    %     results = runAnalysis(obj,analysisType,X1,X2,tryNumber);
                     %     return
                     % end
                 case 7
                     results.exitStatus = 'Deformation Limits Reached';
                 case 8
                     results.exitStatus = 'Analysis Timed Out';
+                case 134
+                    warning('OpenSees crashed,error: Aborted');
+                    results = runAnalysis(obj,analysisType,X1,X2,tryNumber+1);
+                    return                
+                case 139
+                    warning('OpenSees crashed,error: Segmentation fault');
+                    results = runAnalysis(obj,analysisType,X1,X2,tryNumber+1);
+                    return
                 otherwise
                     if strcmp(obj.eigenType,'genBandArpack') 
                         warning('Repeating the analysis with symmBandLapack');
                         obj.eigenType = 'symmBandLapack';
-                        results = runAnalysis(obj,analysisType,X1,X2,X3,tryNumber);
+                        results = runAnalysis(obj,analysisType,X1,X2,tryNumber);
                         obj.eigenType = 'genBandArpack';
                         return
                     else
@@ -1949,7 +1957,13 @@ classdef BenchmarkAnalysis3d_OpenSees < OpenSeesAnalysis
                                 loadingSteps.maxAnalysisTime           = 240;
                                 loadingSteps.baseForceTolerance        = obj.base_tolerance_force;
                                 loadingSteps.baseDisplacementTolerance = 1e-7*obj.L;
-
+                            case 3
+                                loadingSteps.coarseDispStepSize        = obj.L/1000000*direction;
+                                loadingSteps.fineDispStepSize          = obj.L/10000000*direction;
+                                loadingSteps.maxDisp                   = 0.10*obj.L;
+                                loadingSteps.maxAnalysisTime           = 600;
+                                loadingSteps.baseForceTolerance        = obj.base_tolerance_force;
+                                loadingSteps.baseDisplacementTolerance = 1e-7*obj.L;
                             otherwise
                                 error('Undefined for tryNumber: %i',tryNumber)
                         end

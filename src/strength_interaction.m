@@ -22,6 +22,7 @@ properties
     axis                                    = 'all'; % 'all' or 'weak' or 'strong' or 'biaxial'
     loading_angle                           = [];   % Just for 'biaxial' axis
     check_for_errors_in_surface1            = false;
+    extra_fine_DispStepSize                 = false;
     % Elastic Analysis
     applyNotionalLoad                       = [];
     % Interaction Options        
@@ -493,11 +494,18 @@ end
                 % Run axial only analysis to get Pn        
                 P1_comp = inf(1,num_imp_angles);
                 for i = 1:num_imp_angles
-
-                    results(i) = be(i).runAnalysis(analysisType,0,[],1);
-                    if ~results(i).limitPoint.good
-                        results(i) = be(i).runAnalysis(analysisType,0,[],2);
+                    if obj.extra_fine_DispStepSize
+                        try_number = 2;
+                    else
+                        try_number = 1;
                     end
+                    results(i) = be(i).runAnalysis(analysisType,0,[],try_number);
+                    if ~results(i).limitPoint.good
+                        results(i) = be(i).runAnalysis(analysisType,0,[],try_number+1);
+                    end
+                    if ~results(i).limitPoint.good
+                        results(i) = be(i).runAnalysis(analysisType,0,[],try_number+2);
+                    end                    
                     if ~results(i).limitPoint.good
                         error('Limit Point Not Obtained: Axial Only');
                     end
@@ -540,10 +548,15 @@ end
                     M1_comp = inf(1,num_imp_angles);
                     for j = 1:num_imp_angles           
                         be(j).numStepsGravity = 100;
-
-                        results(j) = be(j).runAnalysis(analysisType,Ps(i),0,1);
+                        if obj.extra_fine_DispStepSize
+                            try_number = 2;
+                        else
+                            try_number = 1;
+                        end
+                            
+                        results(j) = be(j).runAnalysis(analysisType,Ps(i),0,try_number);
                         if ~results(j).limitPoint.good
-                            results(j) = be(j).runAnalysis(analysisType,Ps(i),0,2);
+                            results(j) = be(j).runAnalysis(analysisType,Ps(i),0,try_number+1);
                         end
                         if ~results(j).limitPoint.good
                             error('Limit Point Not Obtained: Lateral Loading');
